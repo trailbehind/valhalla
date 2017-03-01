@@ -10,6 +10,7 @@
 #include <boost/python/dict.hpp>
 #include <boost/python/extract.hpp>
 #include <boost/python.hpp>
+#include <boost/python/exception_translator.hpp>
 
 #include "midgard/logging.h"
 #include "meili/traffic_segment_matcher.h"
@@ -62,4 +63,7 @@ BOOST_PYTHON_MODULE(valhalla) {
         ("SegmentMatcher", boost::python::no_init)
       .def("__init__", boost::python::make_constructor(+[](){ return boost::make_shared<valhalla::meili::TrafficSegmentMatcher>(configure()); }))
       .def("Match", &valhalla::meili::TrafficSegmentMatcher::match);
+      register_exception_translator<my_exception>(&translate);
+
+
 }

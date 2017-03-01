@@ -198,9 +198,7 @@ namespace baldr {
 
     // meili project 6xx
     {600,"Failed to parse json request"},
-    {601,"Insufficiently specified required parameter 'trace'"},
-    {602,"The config is incorrectly loaded"},
-    {603,"Sequence size not equal to match result size"}
+    {601,"The config is incorrectly loaded"}
   };
 
   struct valhalla_exception_t: public std::runtime_error {

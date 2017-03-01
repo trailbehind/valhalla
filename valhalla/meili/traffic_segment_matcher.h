@@ -5,7 +5,6 @@
 #include <sstream>
 #include <boost/property_tree/ptree.hpp>
 
-#include "valhalla/baldr/errorcode_util.h"
 #include "baldr/graphreader.h"
 #include "baldr/graphid.h"
 #include "baldr/json.h"
