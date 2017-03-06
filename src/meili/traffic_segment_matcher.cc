@@ -1,8 +1,6 @@
 #include <vector>
 #include <string>
 #include <boost/property_tree/json_parser.hpp>
-#include <boost/python/exception_translator.hpp>
-#include <exception>
 
 #include "midgard/logging.h"
 #include "midgard/pointll.h"
@@ -12,22 +10,6 @@
 using namespace valhalla::baldr;
 
 namespace {
-
-struct my_exception : std::exception
-{
-  char const* what() throw() { return "One of my exceptions"; }
-};
-
-void translate(my_exception const& e)
-{
-    // Use the Python 'C' API to set up an exception object
-    PyErr_SetString(PyExc_RuntimeError, e.what());
-}
-
-void something_which_throws()
-{
-    throw my_exception();
-}
 
 float GetEdgeDist(const valhalla::meili::MatchResult& res,
                   std::shared_ptr<valhalla::meili::MapMatcher> matcher) {
@@ -60,8 +42,9 @@ std::string  TrafficSegmentMatcher::match(const std::string& json) {
   try {
     std::stringstream stream(json);
     boost::property_tree::read_json(stream, request);
-  } catch (std::exception& translate) {
-    something_which_throws();
+  } catch (...) {
+    LOG_ERROR("Error parsing JSON= " + json);
+    return "{\"foo\":\"bar\"}";
   }
 
   // Form trace positions
@@ -77,22 +60,24 @@ std::string  TrafficSegmentMatcher::match(const std::string& json) {
       times.push_back(pt.second.get<int>("time"));
     }
   } else {
-    throw std::runtime_error("Insufficiently specified required parameter 'trace'");
+    LOG_ERROR("Could not form trace from input JSON= " + json);
+    return "{\"foo\":\"bar\"}";
   }
 
   // Need to add a ptree to set the mode to use within matching
   // TODO - do we need to overrides to defaults?
   // TODO - later could input a mode in the request?
   boost::property_tree::ptree trace_config;
-  //trace_config.put<std::string>("mode", "auto");
+  trace_config.put<std::string>("mode", "auto");
 
   // Call Meili for map matching to get a collection of pathLocation Edges
   // Create a matcher
   std::shared_ptr<valhalla::meili::MapMatcher> matcher;
   try {
     matcher.reset(matcher_factory.Create(trace_config));
-  } catch (std::exception& e) {
-    LOG_ERROR("The config is incorrectly loaded: " + std::string(e.what()));
+  } catch (const std::invalid_argument& ex) {
+    // TODO - what to return?
+    return "{\"foo\":\"bar\"}";
   }
 
   // Populate a measurement sequence to pass to the map matcher
@@ -110,7 +95,8 @@ std::string  TrafficSegmentMatcher::match(const std::string& json) {
   }
 
   if (sequence.size() != results.size()) {
-    throw std::runtime_error("Sequence size not equal to match result size");
+    LOG_ERROR("Sequence size not equal to match result size");
+    return "{\"foo\":\"bar\"}";
   }
 
   // TODO - more robust list of edges. Handle cases where multiple
