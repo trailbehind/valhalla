@@ -72,8 +72,10 @@ GraphReader::GraphReader(const boost::property_tree::ptree& pt)
 
 // Method to test if tile exists
 bool GraphReader::DoesTileExist(const GraphId& graphid) const {
-  if(tile_extract_->tiles.find(graphid) != tile_extract_->tiles.cend())
-    return true;
+  //if you are using an extract only check that
+  if(!tile_extract_->tiles.empty())
+    return tile_extract_->tiles.find(graphid) != tile_extract_->tiles.cend();
+  //otherwise check memory or disk
   if(cache_.find(graphid) != cache_.end())
     return true;
   std::string file_location = tile_hierarchy_.tile_dir() + "/" +
@@ -82,9 +84,11 @@ bool GraphReader::DoesTileExist(const GraphId& graphid) const {
   return stat(file_location.c_str(), &buffer) == 0;
 }
 bool GraphReader::DoesTileExist(const boost::property_tree::ptree& pt, const GraphId& graphid) {
+  //if you are using an extract only check that
   auto extract = get_extract_instance(pt);
-  if(extract->tiles.find(graphid) != extract->tiles.cend())
-    return true;
+  if(!extract->tiles.empty())
+    return extract->tiles.find(graphid) != extract->tiles.cend();
+  //otherwise check the disk
   TileHierarchy tile_hierarchy(pt.get<std::string>("tile_dir"));
   std::string file_location = tile_hierarchy.tile_dir() + "/" +
     GraphTile::FileSuffix(graphid.Tile_Base(), tile_hierarchy);
@@ -137,6 +141,12 @@ const GraphTile* GraphReader::GetGraphTile(const GraphId& graphid) {
     auto inserted = cache_.emplace(base, std::move(tile));
     return &inserted.first->second;
   }
+}
+
+const GraphTile* GraphReader::GetGraphTile(const GraphId& graphid, const GraphTile*& tile) {
+  if(!tile || tile->id() != graphid.Tile_Base())
+    tile = GetGraphTile(graphid);
+  return tile;
 }
 
 const GraphTile* GraphReader::GetGraphTile(const PointLL& pointll, const uint8_t level){
@@ -211,26 +221,46 @@ const DirectedEdge* GraphReader::GetOpposingEdge(const GraphId& edgeid, const Gr
 
 // Convenience method to determine if 2 directed edges are connected.
 bool GraphReader::AreEdgesConnected(const GraphId& edge1, const GraphId& edge2) {
+  // Check if there is a transition edge between n1 and n2
+  auto is_transition = [this](const GraphId& n1, const GraphId& n2) {
+    if (n1.level() == n2.level()) {
+      return false;
+    } else {
+      uint32_t n = 0, id = 0;
+      const DirectedEdge* de = GetGraphTile(n1)->GetDirectedEdges(n1.id(), n, id);
+      for (uint32_t i = 0; i < n; i++, de++) {
+        if ((de->trans_up() || de->trans_down()) && de->endnode() == n2) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
   // Get both directed edges
   const GraphTile* t1 = GetGraphTile(edge1);
   const DirectedEdge* de1 = t1->directededge(edge1);
   const GraphTile* t2 = (edge2.Tile_Base() == edge1.Tile_Base()) ?
                           t1 : GetGraphTile(edge2);
   const DirectedEdge* de2 = t2->directededge(edge2);
-  if (de1->endnode() == de2->endnode()) {
+  if (de1->endnode() == de2->endnode() ||
+      is_transition(de1->endnode(), de2->endnode())) {
     return true;
   }
 
   // Get opposing edge to de1
   const DirectedEdge* de1_opp = GetOpposingEdge(edge1, t1);
-  if (de1_opp->endnode() == de2->endnode()) {
+  if (de1_opp->endnode() == de2->endnode() ||
+      is_transition(de1_opp->endnode(), de2->endnode())) {
     return true;
   }
 
   // Get opposing edge to de2 and compare to both edge1 endnodes
   const DirectedEdge* de2_opp = GetOpposingEdge(edge2, t2);
   if (de2_opp->endnode() == de1->endnode() ||
-      de2_opp->endnode() == de1_opp->endnode()) {
+      de2_opp->endnode() == de1_opp->endnode() ||
+      is_transition(de2_opp->endnode(), de1->endnode()) ||
+      is_transition(de2_opp->endnode(), de1_opp->endnode())) {
     return true;
   }
   return false;
