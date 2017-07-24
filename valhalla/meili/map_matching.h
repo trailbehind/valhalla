@@ -133,6 +133,36 @@ class MapMatching: public ViterbiSearch<State>
     return time;
   }
 
+  template <typename candidate_t>
+  Time AppendState(const Measurement& measurement,
+                   candidate_t candidate)
+  {
+    Time time = states_.size();
+
+    // Append to base class
+    std::vector<const State*> column;
+    candidate_t grouped = candidate;
+    for(auto& edge : candidate.edges) {
+      if(grouped.edges.size() && grouped.edges.back().score != edge.score) {
+        state_.push_back(new State(state_.size(), time, grouped));
+        column.push_back(state_.back());
+        grouped.edges = {edge};
+      }
+      else
+        grouped.edges.push_back(edge);
+    }
+    if(grouped.edges.size()) {
+      state_.push_back(new State(state_.size(), time, grouped));
+      column.push_back(state_.back());
+    }
+    unreached_states_.push_back(column);
+
+    states_.push_back(column);
+    measurements_.push_back(measurement);
+
+    return time;
+  }
+
   // given the *squared* great circle distance between a measurement and its candidate,
   // return the emission cost of the candidate
   float

@@ -1,6 +1,6 @@
 #include <cmath>
 #include "midgard/distanceapproximator.h"
-
+#include "loki/search.h"
 #include "meili/routing.h"
 #include "meili/geometry_helpers.h"
 #include "meili/match_route.h"
@@ -340,9 +340,71 @@ MapMatcher::OfflineMatch(
     return {};
   }
 
-  const auto interpolation_distance = config_.get<float>("interpolation_distance"),
-          sq_interpolation_distance = interpolation_distance * interpolation_distance;
+  const auto interpolation_distance = config_.get<float>("interpolation_distance");
+  const auto sq_interpolation_distance = interpolation_distance * interpolation_distance;
   std::unordered_map<Time, std::vector<Measurement>> interpolated_measurements;
+  /*
+  // Make the locations to pass to loki::search
+  std::vector<baldr::Location> locations;
+  for(const auto& measurement : measurements) {
+    //first or last one are states for sure, also any that are far enough apart from previous
+    if(&measurement == &measurements.front() || &measurement == &measurements.back() ||
+       sq_interpolation_distance < locations.back().latlng_.DistanceSquared(measurement.lnglat())) {
+      locations.emplace_back(baldr::Location{measurement.lnglat(), baldr::Location::StopType::BREAK, 0,
+          static_cast<unsigned int>(std::max(measurement.search_radius(), measurement.gps_accuracy()))});
+      //TODO: supplant measurement with a location object
+      //for now use a string trick to store an index of the original measurement
+      uint32_t index = locations.size() - 1;
+      locations.back().city_.resize(4);
+      memcpy(&locations.back().city_[0], static_cast<const char*>(static_cast<const void*>(&index)), 4);
+    }//otherwise it gets interpolated
+    else {
+      interpolated_measurements[locations.size() - 1].push_back(measurement);
+    }
+  }
+
+  // Get the candidates for each state
+  auto candidates = loki::Search(locations, graphreader_,
+      mapmatching_.costing()->GetEdgeFilter(), mapmatching_.costing()->GetNodeFilter());
+  std::vector<baldr::PathLocation> correlated; correlated.reserve(candidates.size());
+  for(const auto& candidate : candidates)
+    correlated.push_back(candidate.second);
+  std::sort(correlated.begin(), correlated.end(), [](const baldr::PathLocation& a, const baldr::PathLocation& b) {
+    //TODO: stop abusing the location stuff to get an index out, see above
+    uint32_t ai = *static_cast<const uint32_t*>(static_cast<const void*>(&a.city_[0]));
+    uint32_t bi = *static_cast<const uint32_t*>(static_cast<const void*>(&b.city_[0]));
+    return ai < bi;
+  });
+
+  for(const auto& c : correlated) {
+    std::cout << "-------------" << std::endl;
+    for(const auto& e : c.edges) {
+      std::cout << e.id << "  " << e.dist << "  " << e.score/10.f << std::endl;
+    }
+    std::cout << "*************" << std::endl;
+    const auto& candidates = candidatequery_.Query(c.latlng_,c.radius_ * c.radius_,mapmatching_.costing()->GetEdgeFilter());
+    for(const auto& b : candidates) {
+      for(const auto& e : b.edges) {
+        std::cout << e.id << "  " << e.dist << "  " << e.score << std::endl;
+      }
+    }
+    std::cout << "-------------" << std::endl;
+  }
+
+
+  // Add the states to the HMM
+  for(auto& candidate : candidates) {
+    //TODO: stop abusing the location stuff to get an index out, see above
+    uint32_t index = *static_cast<const uint32_t*>(static_cast<const void*>(&candidate.first.city_[0]));
+    const auto& measurement = measurements[index];
+    //TODO: loki is hacked to add a multiplier to the score we undo that
+    //here so that meili can rely on it being sq dist
+    for(auto& edge : candidate.second.edges)
+      edge.score /= 10.f;
+    //actually add the state
+    mapmatching_.AppendState(measurement, candidate.second);
+  }
+*/
 
   // Always match the first measurement
   auto time = AppendMeasurement(*begin);
@@ -361,6 +423,8 @@ MapMatcher::OfflineMatch(
     }
   }
 
+  //const auto time = locations.size() - 1;
+  //const auto match_count = locations.size();
   const auto state_rbegin = mapmatching_.SearchPath(time);
   const auto state_rend = std::next(state_rbegin, match_count);
   const auto& results = FindMatchResults(mapmatching_, state_rbegin, state_rend, time);
@@ -395,6 +459,13 @@ MapMatcher::AppendMeasurement(const Measurement& measurement)
       std::max(measurement.sq_search_radius(), measurement.sq_gps_accuracy()),
       mapmatching_.costing()->GetEdgeFilter());
   return mapmatching_.AppendState(measurement, candidates.begin(), candidates.end());
+  /*baldr::Location loc(measurement.lnglat(), baldr::Location::StopType::BREAK, 0,
+      static_cast<unsigned int>(std::max(measurement.search_radius(), measurement.gps_accuracy())));
+  auto candidate = loki::Search({loc}, graphreader_,
+      mapmatching_.costing()->GetEdgeFilter(), mapmatching_.costing()->GetNodeFilter()).begin()->second;
+  for(auto& e : candidate.edges)
+    e.score /= 10.f;
+  return mapmatching_.AppendState(measurement, candidate);*/
 }
 
 }
