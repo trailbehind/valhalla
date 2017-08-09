@@ -607,8 +607,8 @@ std::vector<PathInfo> BidirectionalAStar::FormPath(GraphReader& graphreader) {
   // Metrics (TODO - more accurate cost)
   uint32_t pathcost = forward_labels_.edgelabel(idx1).cost().cost +
                       reverse_labels_.edgelabel(idx2).cost().cost;
-  LOG_INFO("path_cost::" + std::to_string(pathcost));
-  LOG_INFO("FormPath path_iterations::" + std::to_string(forward_labels_.size()) +
+  LOG_DEBUG("path_cost::" + std::to_string(pathcost));
+  LOG_DEBUG("FormPath path_iterations::" + std::to_string(forward_labels_.size()) +
            "," + std::to_string(reverse_labels_.size()));
 
   // Work backwards on the forward path
