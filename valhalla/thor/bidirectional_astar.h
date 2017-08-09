@@ -14,6 +14,7 @@
 #include <valhalla/thor/pathalgorithm.h>
 #include <valhalla/thor/astarheuristic.h>
 #include <valhalla/thor/edgestatus.h>
+#include <valhalla/thor/labelset.h>
 
 namespace valhalla {
 namespace thor {
@@ -65,14 +66,11 @@ class BidirectionalAStar : public PathAlgorithm {
   void Clear();
 
  protected:
-  // Access mode used by the costing method
-  uint32_t access_mode_;
-
-  // Current travel mode
-  sif::TravelMode mode_;
-
-  // Current travel type
-  uint8_t travel_type_;
+  uint32_t access_mode_;  // Access mode used by the costing method
+  sif::TravelMode mode_;  // Current travel mode
+  uint8_t travel_type_;   // Current travel type
+  float cost_diff_;       // Heuristic cost difference between forward
+                          // and reverse
 
   // Current costing mode
   std::shared_ptr<sif::DynamicCost> costing_;
@@ -82,21 +80,12 @@ class BidirectionalAStar : public PathAlgorithm {
   std::vector<sif::HierarchyLimits> hierarchy_limits_reverse_;
 
   // A* heuristic
-  float cost_diff_;
   AStarHeuristic astarheuristic_forward_;
   AStarHeuristic astarheuristic_reverse_;
 
-  // Vector of edge labels (requires access by index).
-  std::vector<sif::BDEdgeLabel> edgelabels_forward_;
-  std::vector<sif::BDEdgeLabel> edgelabels_reverse_;
-
-  // Adjacency list - approximate double bucket sort
-  std::shared_ptr<baldr::DoubleBucketQueue> adjacencylist_forward_;
-  std::shared_ptr<baldr::DoubleBucketQueue> adjacencylist_reverse_;
-
-  // Edge status. Mark edges that are in adjacency list or settled.
-  std::shared_ptr<EdgeStatus> edgestatus_forward_;
-  std::shared_ptr<EdgeStatus> edgestatus_reverse_;
+  // LabelSet for forward and reverse direction
+  LabelSet<sif::BDEdgeLabel> forward_labels_;
+  LabelSet<sif::BDEdgeLabel> reverse_labels_;
 
   // Best candidate connection and threshold to extend search.
   uint32_t threshold_;
@@ -109,7 +98,7 @@ class BidirectionalAStar : public PathAlgorithm {
    * @param  destll  Lat,lng of the destination.
    * @param  costing Dynamic costing method.
    */
-  void Init(const PointLL& origll, const PointLL& destll);
+  void Init(const midgard::PointLL& origll, const midgard::PointLL& destll);
 
   /**
    * Expand from the node along the forward search path.

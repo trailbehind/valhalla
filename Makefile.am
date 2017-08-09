@@ -240,6 +240,7 @@ nobase_include_HEADERS = \
 	valhalla/thor/costmatrix.h \
 	valhalla/thor/edgestatus.h \
 	valhalla/thor/isochrone.h \
+	valhalla/thor/labelset.h \
 	valhalla/thor/optimizer.h \
 	valhalla/thor/map_matcher.h \
 	valhalla/thor/match_result.h \
