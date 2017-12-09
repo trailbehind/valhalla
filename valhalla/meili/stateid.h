@@ -10,7 +10,7 @@ namespace meili {
 
 constexpr uint32_t kInvalidTime = std::numeric_limits<uint32_t>::max();
 
-union StateId
+struct StateId
 {
  public:
   using Time = uint32_t;
@@ -18,38 +18,37 @@ union StateId
   using Id = uint32_t;
 
   StateId()
-      : fields_({kInvalidTime, 0})
-  {}
+      : time_(kInvalidTime),
+        id_(0) {
+  }
 
   explicit StateId(const Time& time, Id id)
-      : fields_({time, id})
-  {}
+      : time_(time),
+        id_(id) {
+  }
 
   Time time() const
-  { return fields_.time; }
+  { return time_; }
 
   Id id() const
-  { return fields_.id; }
+  { return id_; }
 
   bool IsValid() const
-  { return fields_.time != kInvalidTime; }
+  { return time_ != kInvalidTime; }
 
   bool operator ==(const StateId& rhs) const
-  { return value_ == rhs.value_; }
+  { return time() == rhs.time() && id() == rhs.id(); }
 
   bool operator !=(const StateId& rhs) const
-  { return value_ != rhs.value_; }
+  { return time() != rhs.time() || id() != rhs.id(); }
 
+  // Create a single 64 bit value
   uint64_t value() const
-  { return value_; }
+  { return time_ | id_ << 32; }
 
  private:
-  struct {
-    uint64_t time: 32;
-    uint64_t id: 32;
-  } fields_;
-
-  uint64_t value_;
+  uint64_t time_ : 32;
+  uint64_t id_   : 32;
 };
 
 }
