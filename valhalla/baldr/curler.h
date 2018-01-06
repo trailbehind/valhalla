@@ -18,7 +18,9 @@ namespace {
 
   static std::shared_ptr<CURL> init_curl() {
     static curl_singleton_t s;
-    return std::shared_ptr<CURL>(curl_easy_init(), [](CURL* c){curl_easy_cleanup(c);});
+    CURL *curl = curl_easy_init();
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+    return std::shared_ptr<CURL>(curl, [](CURL* c){curl_easy_cleanup(c);});
   }
 
   char ALL_ENCODINGS[] = "";
