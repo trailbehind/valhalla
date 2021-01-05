@@ -38,6 +38,7 @@ const std::unordered_map<std::string, bool> AttributesController::kDefaultAttrib
     {kEdgeSignGuideToward, true},
     {kEdgeSignJunctionName, true},
     {kEdgeSignGuidanceViewJunction, true},
+    {kEdgeSignGuidanceViewSignboard, true},
     {kEdgeTravelMode, true},
     {kEdgeVehicleType, true},
     {kEdgePedestrianType, true},
@@ -72,9 +73,11 @@ const std::unordered_map<std::string, bool> AttributesController::kDefaultAttrib
     {kEdgeTruckRoute, true},
     {kEdgeDefaultSpeed, true},
     {kEdgeDestinationOnly, true},
-    {kNodeIncidents, false},
+    {kEdgeIsUrban, false},
+    {kEdgeTaggedNames, true},
 
     // Node keys
+    {kIncidents, false},
     {kNodeIntersectingEdgeBeginHeading, true},
     {kNodeIntersectingEdgeFromEdgeNameConsistency, true},
     {kNodeIntersectingEdgeToEdgeNameConsistency, true},
@@ -84,7 +87,7 @@ const std::unordered_map<std::string, bool> AttributesController::kDefaultAttrib
     {kNodeIntersectingEdgeUse, true},
     {kNodeIntersectingEdgeRoadClass, true},
     {kNodeElapsedTime, true},
-    {kNodeaAdminIndex, true},
+    {kNodeAdminIndex, true},
     {kNodeType, true},
     {kNodeFork, true},
     {kNodeTransitPlatformInfoType, true},
@@ -126,7 +129,9 @@ const std::unordered_map<std::string, bool> AttributesController::kDefaultAttrib
     // Per-shape attributes
     {kShapeAttributesTime, false},
     {kShapeAttributesLength, false},
-    {kShapeAttributesSpeed, false}};
+    {kShapeAttributesSpeed, false},
+    {kShapeAttributesSpeedLimit, false},
+};
 
 AttributesController::AttributesController() {
   attributes = kDefaultAttributes;
